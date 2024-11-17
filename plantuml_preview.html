@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Kroki Preview</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background-color: #f5f5f5;
+        overflow-y: auto;
+      }
+      body {
+        padding: 20px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        min-height: 100%;
+      }
+      .main-container {
+        flex: 1;
+        width: 95%;
+        margin: 0 auto;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        height: max-content;
+      }
+      .controls {
+        margin-bottom: 20px;
+        width: 100%;
+        position: relative;
+        z-index: 100;
+        flex-shrink: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+      .content-container {
+        display: flex;
+        gap: 20px;
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        overflow: visible;
+        height: calc(100% - 70px);
+      }
+      .content-container.vertical {
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      .editor-section {
+        width: 50%;
+        position: relative;
+        min-width: 300px;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+      .content-container.vertical .editor-section {
+        width: 100%;
+        height: 50vh;
+      }
+      .editor-section::after,
+      .editor-section::before {
+        content: "";
+        position: absolute;
+        background: #e0e0e0;
+        transition: background-color 0.2s;
+        z-index: 10;
+      }
+      .editor-section::after {
+        top: 0;
+        right: -10px;
+        width: 4px;
+        height: 100%;
+        cursor: col-resize;
+      }
+      .editor-section::before {
+        bottom: -10px;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        cursor: row-resize;
+      }
+      .editor-section:hover::after,
+      .editor-section:hover::before {
+        background: #2196f3;
+      }
+      .editor-section.dragging::after,
+      .editor-section.dragging::before {
+        background: #1976d2;
+      }
+      .content-container.vertical .editor-section::after {
+        display: none;
+      }
+      textarea {
+        width: 100%;
+        height: 100%;
+        font-family: monospace;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        resize: none;
+        box-sizing: border-box;
+        line-height: 1.5;
+        overflow-y: auto;
+      }
+      #preview {
+        flex: 1;
+        min-width: 0;
+        border: 1px solid #ddd;
+        padding: 10px;
+        background-color: white;
+        border-radius: 4px;
+        overflow: auto;
+        box-sizing: border-box;
+        height: 100%;
+      }
+      .content-container.vertical #preview {
+        width: 100%;
+        height: auto;
+        flex: 1;
+      }
+      select {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: white;
+        min-width: 200px;
+      }
+      button {
+        padding: 8px 16px;
+        border-radius: 4px;
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        position: relative;
+        overflow: hidden;
+      }
+      button:hover {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      }
+      button:active {
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        transform: translateY(1px);
+      }
+      button::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 5px;
+        height: 5px;
+        background: rgba(255, 255, 255, 0.5);
+        opacity: 0;
+        border-radius: 100%;
+        transform: scale(1, 1) translate(-50%);
+        transform-origin: 50% 50%;
+      }
+      button:active::after {
+        animation: ripple 0.4s ease-out;
+      }
+      @keyframes ripple {
+        0% {
+          transform: scale(0, 0);
+          opacity: 0.5;
+        }
+        100% {
+          transform: scale(20, 20);
+          opacity: 0;
+        }
+      }
+      .btn-icon {
+        width: 18px;
+        height: 18px;
+        fill: currentColor;
+      }
+      button.preview-btn {
+        background-color: #4caf50;
+      }
+      button.preview-btn:hover {
+        background-color: #43a047;
+      }
+      button.layout-toggle {
+        background-color: #2196f3;
+      }
+      button.layout-toggle:hover {
+        background-color: #1e88e5;
+      }
+      button.export-svg {
+        background-color: #ff9800;
+      }
+      button.export-svg:hover {
+        background-color: #fb8c00;
+      }
+      button.export-png {
+        background-color: #9c27b0;
+      }
+      button.export-png:hover {
+        background-color: #8e24aa;
+      }
+      button.export-pdf {
+        background-color: #f44336;
+      }
+      button.export-pdf:hover {
+        background-color: #e53935;
+      }
+      button.manual-btn {
+        background-color: #607d8b;
+      }
+      button.manual-btn:hover {
+        background-color: #546e7a;
+      }
+      .error {
+        color: red;
+        padding: 10px;
+        border: 1px solid red;
+        border-radius: 4px;
+        background-color: #fff8f8;
+      }
+      .divider {
+        width: 1px;
+        height: 24px;
+        background-color: #ddd;
+        margin: 0 10px;
+      }
+      .drawer {
+        position: fixed;
+        top: 0;
+        right: -90vw;
+        width: 90vw;
+        height: 100%;
+        background: white;
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+        transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1000;
+        display: flex;
+      }
+      .drawer.open {
+        right: 0;
+      }
+      .drawer-handle {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 20px;
+        height: 100%;
+        background: #f5f5f5;
+        cursor: ew-resize;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-right: 1px solid #ddd;
+      }
+      .drawer-handle:hover {
+        background: #e0e0e0;
+      }
+      .drawer-handle::before {
+        content: "";
+        width: 2px;
+        height: 20px;
+        background: #999;
+        border-radius: 1px;
+      }
+      .close-btn {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        padding: 8px;
+        cursor: pointer;
+        color: #666;
+        box-shadow: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+      }
+      .close-btn:hover {
+        background: rgba(0, 0, 0, 0.05);
+        box-shadow: none;
+      }
+      .drawer-content {
+        flex: 1;
+        margin-left: 20px;
+        overflow: auto;
+      }
+      #pdfViewer {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+      .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.3);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s;
+        z-index: 999;
+      }
+      .overlay.visible {
+        opacity: 1;
+        visibility: visible;
+      }
+      .drawer-side {
+        width: 40px;
+        background: #f5f5f5;
+        border-right: 1px solid #ddd;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 8px;
+      }
+      .lang-buttons {
+        margin-top: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .lang-btn {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: white;
+        color: #666;
+        cursor: pointer;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+      }
+      .lang-btn:hover {
+        background: #e0e0e0;
+      }
+      .lang-btn.active {
+        background: #1976d2;
+        color: white;
+        border-color: #1976d2;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-container">
+      <div class="controls">
+        <select id="type">
+          <option value="plantuml">PlantUML</option>
+          <option value="mermaid">Mermaid</option>
+          <option value="graphviz">Graphviz</option>
+          <option value="ditaa">Ditaa (ASCII art)</option>
+          <option value="c4plantuml">C4 (with PlantUML)</option>
+          <option value="erd">Entity Relationship</option>
+          <option value="nomnoml">Nomnoml</option>
+          <option value="umlet">UMLet</option>
+          <option value="bpmn">BPMN</option>
+          <option value="actdiag">Activity Diagram</option>
+          <option value="blockdiag">Block Diagram</option>
+          <option value="seqdiag">Sequence Diagram</option>
+          <option value="nwdiag">Network Diagram</option>
+          <option value="svgbob">SVGbob</option>
+          <option value="vega">Vega</option>
+          <option value="vegalite">Vega-Lite</option>
+          <option value="wavedrom">WaveDrom</option>
+          <option value="pikchr">Pikchr</option>
+          <option value="structurizr">Structurizr</option>
+          <option value="d2">D2</option>
+          <option value="excalidraw">Excalidraw</option>
+        </select>
+        <button class="preview-btn" onclick="updatePreview()">
+          <svg class="btn-icon" viewBox="0 0 24 24">
+            <path
+              d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"
+            />
+          </svg>
+          预览
+        </button>
+        <button class="layout-toggle" onclick="toggleLayout()">
+          <svg class="btn-icon" viewBox="0 0 24 24">
+            <path d="M4 18h17v-6H4v6zM4 5v6h17V5H4z" />
+          </svg>
+          切换布局
+        </button>
+        <div class="divider"></div>
+        <button class="export-svg" onclick="exportFile('svg')">
+          <svg class="btn-icon" viewBox="0 0 24 24">
+            <path
+              d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"
+            />
+          </svg>
+          导出 SVG
+        </button>
+        <button class="export-png" onclick="exportFile('png')">
+          <svg class="btn-icon" viewBox="0 0 24 24">
+            <path
+              d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
+            />
+          </svg>
+          导出 PNG
+        </button>
+        <button class="export-pdf" onclick="exportFile('pdf')">
+          <svg class="btn-icon" viewBox="0 0 24 24">
+            <path
+              d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"
+            />
+          </svg>
+          导出 PDF
+        </button>
+        <div class="divider"></div>
+        <button class="manual-btn" onclick="toggleDrawer(true)">
+          <svg class="btn-icon" viewBox="0 0 24 24">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"
+            />
+          </svg>
+          查看手册
+        </button>
+      </div>
+      <div class="content-container">
+        <div class="editor-section">
+          <textarea id="input" oninput="debouncedUpdatePreview(this)">
+@startuml
+A -> B: Hello
+@enduml</textarea
+          >
+        </div>
+        <div id="preview"></div>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="drawer" id="drawer">
+      <div class="drawer-side">
+        <button class="close-btn" onclick="toggleDrawer(false)">
+          <svg class="btn-icon" viewBox="0 0 24 24">
+            <path
+              d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+            />
+          </svg>
+        </button>
+        <div class="lang-buttons">
+          <button class="lang-btn active" onclick="switchManual('zh')">
+            中
+          </button>
+          <button class="lang-btn" onclick="switchManual('en')">En</button>
+        </div>
+      </div>
+      <div class="drawer-content">
+        <iframe
+          id="pdfViewer"
+          src="PlantUML_Language_Reference_Guide_zh.pdf"
+        ></iframe>
+      </div>
+    </div>
+
+    <script>
+      let isDragging = false;
+      let isVerticalDragging = false;
+      let startX, startWidth;
+      let startY, startHeight;
+
+      const editorSection = document.querySelector(".editor-section");
+      const container = document.querySelector(".content-container");
+
+      editorSection.addEventListener("mousedown", function (e) {
+        const rect = this.getBoundingClientRect();
+        const isBottomEdge = e.clientY > rect.bottom - 10;
+        const isRightEdge = e.clientX > rect.right - 10;
+
+        if (isBottomEdge) {
+          isVerticalDragging = true;
+          startY = e.clientY;
+          startHeight = this.offsetHeight;
+          this.classList.add("dragging");
+        } else if (isRightEdge && !container.classList.contains("vertical")) {
+          isDragging = true;
+          startX = e.pageX;
+          startWidth = this.offsetWidth;
+          this.classList.add("dragging");
+        }
+      });
+
+      document.addEventListener("mousemove", function (e) {
+        if (isVerticalDragging) {
+          const height = startHeight + (e.clientY - startY);
+          if (height >= 200) {
+            editorSection.style.height = height + "px";
+            if (!container.classList.contains("vertical")) {
+              document.getElementById("preview").style.height = height + "px";
+            }
+          }
+        } else if (isDragging) {
+          const width = startWidth + (e.pageX - startX);
+          const containerWidth = container.offsetWidth;
+
+          if (width >= 300 && width <= containerWidth * 0.8) {
+            editorSection.style.width = width + "px";
+          }
+        }
+      });
+
+      document.addEventListener("mouseup", function () {
+        isDragging = false;
+        isVerticalDragging = false;
+        editorSection.classList.remove("dragging");
+      });
+
+      function toggleLayout() {
+        const container = document.querySelector(".content-container");
+        container.classList.toggle("vertical");
+
+        const editorSection = document.querySelector(".editor-section");
+        const preview = document.getElementById("preview");
+
+        if (container.classList.contains("vertical")) {
+          editorSection.style.width = "100%";
+          editorSection.style.height = "50vh";
+          preview.style.height = "auto";
+        } else {
+          editorSection.style.width = "50%";
+          editorSection.style.height = "100%";
+          preview.style.height = "100%";
+        }
+      }
+
+      async function updatePreview() {
+        const type = document.getElementById("type").value;
+        const input = document.getElementById("input").value;
+        const preview = document.getElementById("preview");
+
+        preview.innerHTML = "Loading...";
+
+        try {
+          const response = await fetch(`http://47.236.89.26:8000/${type}/svg`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "text/plain",
+            },
+            body: input,
+          });
+
+          if (!response.ok) {
+            throw new Error(
+              `错误 (${response.status}): ${await response.text()}`
+            );
+          }
+
+          const svg = await response.text();
+          preview.innerHTML = svg;
+        } catch (error) {
+          preview.innerHTML = `
+                    <div class="error">
+                        错误: ${error.message}<br>
+                        <small>请确保输入格式正确且 Kroki 服务正在运行</small>
+                    </div>`;
+        }
+      }
+
+      async function exportFile(format) {
+        const type = document.getElementById("type").value;
+        const input = document.getElementById("input").value;
+
+        try {
+          const response = await fetch(
+            `http://47.236.89.26:8000/${type}/${format}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "text/plain",
+              },
+              body: input,
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(
+              `错误 (${response.status}): ${await response.text()}`
+            );
+          }
+
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `diagram.${format}`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } catch (error) {
+          alert(`导出失败: ${error.message}`);
+        }
+      }
+
+      function toggleDrawer(show) {
+        const drawer = document.getElementById("drawer");
+        const overlay = document.getElementById("overlay");
+
+        if (show) {
+          drawer.classList.add("open");
+          overlay.classList.add("visible");
+        } else {
+          drawer.classList.remove("open");
+          overlay.classList.remove("visible");
+        }
+      }
+
+      document.getElementById("overlay").addEventListener("click", () => {
+        toggleDrawer(false);
+      });
+
+      window.addEventListener("load", () => {
+        document.getElementById("pdfViewer").src =
+          "PlantUML_Language_Reference_Guide_zh.pdf";
+      });
+
+      document.getElementById("type").addEventListener("change", function () {
+        const type = this.value;
+        const input = document.getElementById("input");
+        input.value = examples[type] || "// 请输入代码";
+        updatePreview();
+      });
+
+      const examples = {
+        plantuml: `@startuml
+A -> B: Hello
+B -> C: Request
+C --> B: Response
+B --> A: Done
+@enduml`,
+
+        mermaid: `graph TD
+    A[开始] --> B{判断}
+    B -->|Yes| C[处理]
+    B -->|No| D[结束]
+    C --> D`,
+
+        graphviz: `digraph G {
+    rankdir=LR;
+    node [shape=box];
+    A -> B -> C;
+    B -> D;
+}`,
+
+        ditaa: `+--------+
+| Start  |
++--------+
+    |
+    v
++--------+
+| End    |
++--------+`,
+
+        bpmn: `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
+  <bpmn:process id="Process_1">
+    <bpmn:startEvent id="StartEvent_1"/>
+  </bpmn:process>
+</bpmn:definitions>`,
+
+        c4plantuml: `@startuml
+!include C4_Context.puml
+
+Person(user, "User")
+System(sys, "System")
+user -> sys: Uses
+@enduml`,
+
+        excalidraw: `{
+  "type": "excalidraw",
+  "elements": [
+    {
+      "type": "rectangle",
+      "x": 100,
+      "y": 100,
+      "width": 200,
+      "height": 100,
+      "text": "Hello"
+    }
+  ]
+}`,
+
+        erd: `[Person]
+*name
+height
+weight
++birth_place_id
+
+[Place]
+*id
+name
+coordinates`,
+
+        nomnoml: `[Pirate|eyeCount: Int|raid();pillage()|
+  [beard]--[parrot]
+  [beard]-:>[foul mouth]
+]
+
+[beard]^[razor]
+[parrot]+->[pirate attack]
+[parrot]->[hungry]
+[hungry]>[food]
+[food]^[chicken]`,
+
+        actdiag: `actdiag {
+  write -> convert -> image
+  
+  lane user {
+    label = "User"
+    write [label = "Writing text"];
+    image [label = "Get diagram"];
+  }
+  lane actdiag {
+    convert [label = "Convert text to image"];
+  }
+}`,
+
+        blockdiag: `blockdiag {
+  A -> B -> C;
+  B -> D;
+}`,
+
+        seqdiag: `seqdiag {
+  browser  -> webserver [label = "GET /index.html"];
+  browser <-- webserver;
+}`,
+
+        nwdiag: `nwdiag {
+  network dmz {
+    address = "210.x.x.x/24"
+    web01 [address = "210.x.x.1"];
+    web02 [address = "210.x.x.2"];
+  }
+}`,
+
+        svgbob: `
+     +-->  Box
+     |
+     |
+    -+---
+     |  |
+     |  |
+     +--+
+`,
+
+        vega: `{
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "width": 400,
+  "height": 200,
+  "padding": 5,
+  "data": [
+    {
+      "name": "table",
+      "values": [
+        {"category": "A", "amount": 28},
+        {"category": "B", "amount": 55},
+        {"category": "C", "amount": 43}
+      ]
+    }
+  ],
+  "marks": [
+    {
+      "type": "rect",
+      "from": {"data": "table"},
+      "encode": {
+        "enter": {
+          "x": {"scale": "x", "field": "category"},
+          "width": {"scale": "x", "band": 1},
+          "y": {"scale": "y", "field": "amount"},
+          "y2": {"scale": "y", "value": 0}
+        }
+      }
+    }
+  ]
+}`,
+
+        vegalite: `{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "description": "A simple bar chart",
+  "data": {
+    "values": [
+      {"a": "A", "b": 28}, {"a": "B", "b": 55}, {"a": "C", "b": 43}
+    ]
+  },
+  "mark": "bar",
+  "encoding": {
+    "x": {"field": "a", "type": "nominal"},
+    "y": {"field": "b", "type": "quantitative"}
+  }
+}`,
+
+        wavedrom: `{ signal: [
+  { name: "clk",  wave: "P......" },
+  { name: "bus",  wave: "x.==.=x", data: ["head", "body", "tail"] },
+  { name: "wire", wave: "0.1..0." }
+]}`,
+
+        pikchr: `
+box "Hello" "World"
+arrow
+box "Goodbye" "World"
+`,
+
+        structurizr: `
+workspace {
+    model {
+        user = person "User"
+        system = softwareSystem "System" {
+            webapp = container "Web Application"
+        }
+        user -> webapp "Uses"
+    }
+    views {
+        systemContext system {
+            include *
+            autoLayout
+        }
+    }
+}
+`,
+
+        d2: `
+shape: sequence_diagram
+alice -> bob: Hello
+bob -> charlie: World
+charlie -> alice: !
+`,
+      };
+
+      // 初始化
+      updatePreview();
+
+      // 添加防抖函数
+      function debounce(func, wait) {
+        let timeout;
+        return function (...args) {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+      }
+
+      // 创建防抖版本的 updatePreview
+      const debouncedUpdatePreview = debounce(updatePreview, 500);
+
+      function switchManual(lang) {
+        // 更新 PDF 源
+        const pdfViewer = document.getElementById("pdfViewer");
+        pdfViewer.src = `PlantUML_Language_Reference_Guide_${lang}.pdf`;
+
+        // 更新按钮状态
+        const buttons = document.querySelectorAll(".lang-btn");
+        buttons.forEach((btn) => {
+          btn.classList.remove("active");
+          if (btn.textContent.toLowerCase().includes(lang)) {
+            btn.classList.add("active");
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
