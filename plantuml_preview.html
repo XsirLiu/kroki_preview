@@ -554,7 +554,7 @@ A -> B: Hello
         preview.innerHTML = "Loading...";
 
         try {
-          const response = await fetch(`http://47.236.89.26:8000/${type}/svg`, {
+          const response = await fetch(`http://47.236.89.26/${type}/svg`, {
             method: "POST",
             headers: {
               "Content-Type": "text/plain",
@@ -585,7 +585,7 @@ A -> B: Hello
 
         try {
           const response = await fetch(
-            `http://47.236.89.26:8000/${type}/${format}`,
+            `http://47.236.89.26/${type}/${format}`,
             {
               method: "POST",
               headers: {
